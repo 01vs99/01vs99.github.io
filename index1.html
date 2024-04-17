@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>信息格式化工具</title>
+</head>
+<body>
+<div class="container">
+    <h1>信息格式化工具</h1>
+    <h3>不会上传，本机操作</h3>
+    <form id="infoForm">
+        <label for="certName">姓名:</label>
+        <input type="text" id="certName" name="certName" required>
+
+        <label for="certNo">身份证:</label>
+        <input type="text" id="certNo" name="certNo" required>
+
+        <label for="contactNum">联系手机号:</label>
+        <input type="tel" id="contactNum" name="contactNum" required>
+
+        <label for="province">省:</label>
+        <select id="province" name="postProvince" required></select>
+
+        <label for="city">市:</label>
+        <select id="city" name="postCity" required></select>
+
+        <label for="district">区:</label>
+        <select id="district" name="postDistrict" required></select>
+
+        <label for="postAddr">详细地址（精确到门牌号）:</label>
+        <textarea id="postAddr" name="postAddr" required></textarea>
+
+        <button type="button" onclick="submitForm()">复制数据</button>
+    </form>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <pre id="jsonOutput"></pre>
+            <button onclick="copyToClipboard()">复制</button>
+        </div>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

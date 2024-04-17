@@ -1,50 +1,532 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
-    <title>信息格式化工具</title>
+    <title>视频文件处理</title>
+    <style>
+        body, html {
+            font-family: 'Arial', sans-serif;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        #container {
+            display: flex;
+            height: 70%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #left, #right {
+            flex: 1;
+            margin: 10px;
+            padding: 20px;
+            border: 2px dashed #0087F7;
+            border-radius: 8px;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        #left:hover, #right:hover {
+            background-color: #e3f2fd;
+        }
+        #export-section {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+        input[type="text"], button {
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            outline: none;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        @media (max-width: 600px) {
+            #container {
+                flex-direction: column;
+            }
+            #left, #right {
+                width: auto;
+                height: 35%;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-    <h1>信息格式化工具</h1>
-    <h3>不会上传，本机操作</h3>
-    <form id="infoForm">
-        <label for="certName">姓名:</label>
-        <input type="text" id="certName" name="certName" required>
-
-        <label for="certNo">身份证:</label>
-        <input type="text" id="certNo" name="certNo" required>
-
-        <label for="contactNum">联系手机号:</label>
-        <input type="tel" id="contactNum" name="contactNum" required>
-
-        <label for="province">省:</label>
-        <select id="province" name="postProvince" required></select>
-
-        <label for="city">市:</label>
-        <select id="city" name="postCity" required></select>
-
-        <label for="district">区:</label>
-        <select id="district" name="postDistrict" required></select>
-
-        <label for="postAddr">详细地址（精确到门牌号）:</label>
-        <textarea id="postAddr" name="postAddr" required></textarea>
-
-        <button type="button" onclick="submitForm()">复制数据</button>
-    </form>
-
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <pre id="jsonOutput"></pre>
-            <button onclick="copyToClipboard()">复制</button>
-        </div>
-    </div>
+<div id="container">
+    <div id="left" class="drop-zone">拖拽选择横版视频</div>
+    <div id="right" class="drop-zone">拖拽选择竖版视频</div>
+</div>
+<div id="export-section">
+    <input type="text" id="filename" placeholder="导出文件名（选填）">
+    <button onclick="exportHTML()">导出</button>
 </div>
 
-<script src="data.js"></script>
-<script src="script.js"></script>
+<script>
+    function setupDropZones() {
+        ["left", "right"].forEach(id => {
+            const zone = document.getElementById(id);
+            // Remove any existing onclick event listener to prevent duplication
+            zone.onclick = null;
+            zone.onclick = () => {
+                // Ensure only one input element exists and it's properly managed
+                let input = zone.querySelector('input[type="file"]');
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'file';
+                    input.onchange = e => handleFileSelected(e.target.files[0], zone);
+                    input.style.display = 'none';
+                    zone.appendChild(input);
+                }
+                input.click();  // Trigger file selection
+            };
+            zone.ondragover = e => {
+                e.preventDefault();
+                zone.classList.add('over');
+            };
+            zone.ondragleave = e => {
+                e.preventDefault();
+                zone.classList.remove('over');
+            };
+            zone.ondrop = e => {
+                e.preventDefault();
+                zone.classList.remove('over');
+                handleFileSelected(e.dataTransfer.files[0], zone);
+            };
+        });
+    }
+
+    function handleFileSelected(file, zone) {
+        if (file) {
+            zone.textContent = file.name;
+            const reader = new FileReader();
+            reader.onload = () => zone.dataset.base64 = reader.result;
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function exportHTML() {
+        const leftVideo = document.getElementById('left').dataset.base64;
+        const rightVideo = document.getElementById('right').dataset.base64;
+        const filename = document.getElementById('filename').value || `${new Date().toISOString().replace(/[-:T]/g, '_').split('.')[0]}.html`;
+
+        const content = `<!DOCTYPE html>
+<html>
+<style>
+html, body {
+    height:100%;
+    padding: 0;
+    margin: 0;
+}
+body {
+    background-color: black; /* black bars */
+    background-size: auto 100%; /* portrait - height fixed, width variable - lock variable to 133% max */
+    background-repeat: no-repeat;
+    background-position: center center;
+    overflow: hidden; /* no scrollbar */
+}
+video{
+
+    /*width: auto;
+    height: 100%;*/
+    /*position: fixed;*/
+    /*padding-top:10%;*/
+    /*padding-bottom:100px;*/
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /*position: absolute;*/
+    /*left:-15%*/
+    /*top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;*/
+    /*display: none;*/
+    z-index: 111;
+
+    display:none;
+}
+
+img{
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 111;
+}
+</style>
+<head>
+
+<script>
+this.mp4_l = "${leftVideo}";
+this.mp4_p = "${rightVideo}";
+var currOrient = "";
+
+function handleSize(){
+    var vid = document.getElementById('vid');
+    var vidSource = document.getElementById('vidsource');
+    //console.log(vidSource);
+    // handling p/l
+    // handling wider than 16:9 to max at 16:9
+    // Portrait
+    if(window.innerWidth < window.innerHeight){
+
+        if(currOrient != "p"){
+            resetCSS();
+            currOrient = "p";
+            //vidSource.setAttribute('src', "MP4Test_SmallMovement_P.mp4");
+            vidSource.setAttribute('src', mp4_p);
+            console.log("setToP");
+
+            vid.load();
+            vid.play();
+        }
+        //document.body.style.backgroundImage = "url('pgif.gif')";
+        //document.body.style.backgroundImage = pgifVar;
+        var aspectRatio = window.innerHeight / window.innerWidth;
+        //console.log(aspectRatio);
+        if(aspectRatio > 1.77777){      // wider than 16:9
+            // how much would the with be for the given height if it was exactly 16:9
+            var targetHeight = window.innerWidth*16/9;
+            var heightDiff = window.innerHeight - targetHeight;
+            /*console.log("height: " + window.innerHeight);
+            console.log("targetHeight: " + targetHeight);
+            console.log("heightDiff: " + heightDiff);
+            console.log("heightPercentDiff: " + heightDiff/window.innerHeight);*/
+
+            vid.style.paddingTop = String(heightDiff/window.innerHeight*100)+"%";
+            vid.style.paddingBottom = String(heightDiff/window.innerHeight*100)+"%";
+            vid.style.height = String(100-((heightDiff/window.innerHeight)*100))+"%";
+            //console.log("style height: " + vid.style.height);
+
+            document.body.style.backgroundSize = "133% auto";
+        }
+        else{
+            document.body.style.backgroundSize = "auto 100%";
+            vid.style.paddingTop = 0;
+            vid.style.paddingBottom = 0;
+            vid.style.height = "100%";
+        }
+    }
+    // Landscape
+    else{
+        if(currOrient != "l"){
+            resetCSS();
+            currOrient = "l";
+            //vidSource.setAttribute('src', "MP4Test_SmallMovement_L.mp4");
+            vidSource.setAttribute('src', mp4_l);
+
+            console.log("setToL");
+            vid.load();
+            vid.play();
+        }
+        //document.body.style.backgroundImage = "url('lgif.gif')";
+        //document.body.style.backgroundImage = lgifVar;
+        var aspectRatio = window.innerWidth / window.innerHeight;
+        //console.log("l aspect ratio" + aspectRatio)
+        if(aspectRatio > 1.77777){      // wider than 16:9
+            var targetWidth = window.innerHeight*16/9;
+            var widthDiff = window.innerWidth - targetWidth;
+
+            vid.style.paddingLeft = String(widthDiff/window.innerWidth*100*0.5)+"%";
+            vid.style.paddingRight = String(widthDiff/window.innerWidth*100*0.5)+"%";
+            vid.style.width = String(100-((widthDiff/window.innerWidth)*100))+"%";
+
+            document.body.style.backgroundSize = "auto 133%";
+        }
+        else{
+            document.body.style.backgroundSize = "100% auto";
+            vid.style.paddingLeft = 0;
+            vid.style.paddingRight = 0;
+            vid.style.width = "100%";
+        }
+    }
+}
+
+function showVid(){
+
+    var vid = document.getElementById('vid');
+    vid.style.display = "initial";
+}
+
+function resetCSS(){
+    var vid = document.getElementById('vid');
+    var vidSource = document.getElementById('vidsource');
+
+    vid.style.paddingTop        = 0;
+    vid.style.paddingBottom     = 0;
+    vid.style.paddingLeft       = 0;
+    vid.style.paddingRight      = 0;
+    vid.style.height            = "100%";
+    vid.style.width             = "100%";
+}
+
+function clickthrough(event){
+    event.preventDefault(); // so no both touch and click is registered
+    mraid.open('');
+}
+
+window.onresize = function(event) {
+if(window.imageVersion == null){
+	return;
+}
+    if(window.imageVersion){
+	    handleSizeImg();
+	}else{
+	    handleSize();
+	}
+};
+
+function handleSizeHandler(){
+ if(window.imageVersion){
+	    handleSizeImg();
+	}else{
+	    handleSize();
+	}
+}
+
+
+function handleSizeImg(){
+    var vid = document.getElementById('vid');
+
+    // handling wider than 16:9 to max at 16:9
+    // Portrait
+    if(window.innerWidth < window.innerHeight){
+
+        if(currOrient != "p"){
+            resetCSS();
+            currOrient = "p";
+            //vidSource.setAttribute('src', "MP4Test_SmallMovement_P.mp4");
+            //vid.setAttribute('src', mp4_p);
+            console.log("setToPImg");
+			vid.src = mp4_p;
+            //vid.load();
+            //vid.play();
+        }
+        //document.body.style.backgroundImage = "url('pgif.gif')";
+        //document.body.style.backgroundImage = pgifVar;
+        var aspectRatio = window.innerHeight / window.innerWidth;
+        //console.log(aspectRatio);
+        if(aspectRatio > 1.77777){      // wider than 16:9
+            // how much would the with be for the given height if it was exactly 16:9
+            var targetHeight = window.innerWidth*16/9;
+            var heightDiff = window.innerHeight - targetHeight;
+            /*console.log("height: " + window.innerHeight);
+            console.log("targetHeight: " + targetHeight);
+            console.log("heightDiff: " + heightDiff);
+            console.log("heightPercentDiff: " + heightDiff/window.innerHeight);*/
+
+            vid.style.paddingTop = String(heightDiff/window.innerHeight*100)+"%";
+            vid.style.paddingBottom = String(heightDiff/window.innerHeight*100)+"%";
+            vid.style.height = String(100-((heightDiff/window.innerHeight)*100))+"%";
+            //console.log("style height: " + vid.style.height);
+
+            document.body.style.backgroundSize = "133% auto";
+        }
+        else{
+            document.body.style.backgroundSize = "auto 100%";
+            vid.style.paddingTop = 0;
+            vid.style.paddingBottom = 0;
+            vid.style.height = "100%";
+        }
+    }
+    // Landscape
+    else{
+        if(currOrient != "l"){
+            resetCSS();
+            currOrient = "l";
+            //vidSource.setAttribute('src', "MP4Test_SmallMovement_L.mp4");
+            //vid.setAttribute('src', mp4_l);
+            vid.src = mp4_l;
+            console.log("setToL");
+            //vid.load();
+            //vid.play();
+        }
+        //document.body.style.backgroundImage = "url('lgif.gif')";
+        //document.body.style.backgroundImage = lgifVar;
+        var aspectRatio = window.innerWidth / window.innerHeight;
+        //console.log("l aspect ratio" + aspectRatio)
+        if(aspectRatio > 1.77777){      // wider than 16:9
+            var targetWidth = window.innerHeight*16/9;
+            var widthDiff = window.innerWidth - targetWidth;
+
+            vid.style.paddingLeft = String(widthDiff/window.innerWidth*100*0.5)+"%";
+            vid.style.paddingRight = String(widthDiff/window.innerWidth*100*0.5)+"%";
+            vid.style.width = String(100-((widthDiff/window.innerWidth)*100))+"%";
+
+            document.body.style.backgroundSize = "auto 133%";
+        }
+        else{
+            document.body.style.backgroundSize = "100% auto";
+            vid.style.paddingLeft = 0;
+            vid.style.paddingRight = 0;
+            vid.style.width = "100%";
+        }
+    }
+}
+
+function showHandler(){
+	var vid = document.getElementById('vid');
+    vid.style.display = "initial";
+}
+
+function showImage(){
+
+}
+
+function pauseVideo(){
+		var vid = document.getElementById('vid');
+		vid.pause();
+}
+
+function resumeVideo(){
+	var vid = document.getElementById('vid');
+	vid.play();
+}
+<\/script>
+</head>
+<body>
+<script>
+
+    window.imageVersion = true;
+
+
+    window.setTimeout(function(){
+        var videoAttr = { 'autoplay': 'autoplay', 'loop': 'loop', 'mute': 'mute', 'playsinline': 'playsinline' };
+        var imgMP4s = Array.prototype.map.call(
+            document.querySelectorAll('img'),
+            function(img){
+
+
+
+                var src = this.mp4_l;
+
+                if(window.innerWidth < window.innerHeight){
+                    src = this.mp4_p;
+                }
+
+
+
+
+
+                img.addEventListener('play', function(e){
+                    window.imageVersion = true;
+
+
+
+                }, this);
+
+
+                img.addEventListener('error', function(e){
+                    window.imageVersion = false;
+
+                    console.log('MP4 in image not supported. Replacing with video', e);
+                    var video = document.createElement('video');
+
+                    for (var key in videoAttr) { video.setAttribute(key, videoAttr[key]); }
+
+                    for (
+                        var imgAttr = img.attributes,
+                            len = imgAttr.length,
+                            i = 0;
+                        i < len;
+                        i++
+                    ) {
+                        video.setAttribute(imgAttr[i].name,  imgAttr[i].value);
+                    }
+
+                    video.removeAttribute('src');
+
+                    var vidSource = document.getElementById('vidsource');
+                    vidsource.src = src;
+
+                    video.append(vidSource);
+
+                    img.parentNode.insertBefore(video, img);
+                    img.parentNode.removeChild(img);
+
+                    //video.load();
+                    //video.play();
+                    video.autoplay = true;
+                    video.muted = true;
+                    video.loop = true;
+                    video.playsinline = true;
+
+                    video.addEventListener('loadstart', function(){
+
+
+                    }, {'once':true});
+
+
+
+                });
+
+                img.src = src;
+
+                window.setInterval(handleSizeHandler, 25);
+                window.setInterval(handleSizeHandler, 400);
+                window.setInterval(showHandler, 400);
+            });
+    });
+
+    // on start
+    //handleSize();
+
+
+    //pauseReplace
+
+
+
+
+
+
+
+<\/script>
+<img id = "vid" ontouchstart="clickthrough(event)" onmousedown="clickthrough(event)">
+</img>
+
+<source id = "vidsource" src="" type="video/mp4">
+
+<!--<img src="pgif.gif" alt="ad">-->
+</body>
+</html>
+`;
+
+        const blob = new Blob([content], {type: 'text/html'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    setupDropZones();
+</script>
+
+
 </body>
 </html>
