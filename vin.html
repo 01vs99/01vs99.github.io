@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIN码与发动机号生成器</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7f9fc;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .generator-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn-generate {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto 20px;
+            transition: background-color 0.3s;
+        }
+        .btn-generate:hover {
+            background-color: #2980b9;
+        }
+        #results {
+            width: 100%;
+        }
+        .result-item {
+            display: flex;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-number {
+            font-weight: bold;
+            width: 30px;
+            padding-top: 10px;
+        }
+        .result-codes {
+            flex-grow: 1;
+        }
+        .code-group {
+            margin-bottom: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 10px;
+            position: relative;
+        }
+        .code-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .code-value {
+            font-family: monospace;
+            font-size: 16px;
+            word-break: break-all;
+            background-color: #eef2f7;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+        .copy-btn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #27ae60;
+        }
+        .year-info {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-left: 10px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>VIN码与发动机号生成器</h1>
+    
+    <div class="generator-container">
+        <button id="generateBtn" class="btn-generate">生成5组VIN码与发动机号</button>
+        <div id="results"></div>
+    </div>
+    
+    <footer>
+        &copy; 2024 VIN码与发动机号生成器 | 仅供测试使用
+    </footer>
+
+    <script>
+        // VIN码生成与校验逻辑
+        function generateRandomVIN() {
+            // WMI列表
+            const wmiList = [
+                "JHM", // Honda car
+                "JF1", // Subaru car
+                "JG1", // Chevrolet/Geo car made by Suzuki
+                "JHA", // Hino truck
+                "JLB", // Mitsubishi Fuso Truck & Bus Corp.
+                "VF8", // Matra Automobiles
+                "VGA", // Peugeot Motocycles
+                "VGT", // ASCA (truck trailers)
+                "VHX", // Manitowoc Cranes - Potain
+                "VJR", // Ligier
+                "LVA", // 北汽福田汽车股份有限公司
+                "LZW", // 上汽通用五菱汽车股份有限公司
+                "LJU", // 上海华普汽车有限公司
+                "LVV", // 上汽集团奇瑞汽车有限公司
+                "L4A"  // 金华市绿源电动车有限公司
+            ];
+
+            // 合法字符集（排除I、O、Q）
+            const validChars = "ABCDEFGHJKLMNPRSTUVWXYZ1234567890";
+            const numericChars = "0123456789";
+            
+            // 随机选择WMI
+            const wmi = wmiList[Math.floor(Math.random() * wmiList.length)];
+            
+            // 随机生成VDS (5位)
+            let vds = "";
+            for (let i = 0; i < 5; i++) {
+                vds += validChars.charAt(Math.floor(Math.random() * validChars.length));
+            }
+            
+            // 最近5年的年份码
+            const recentYearCodes = ["L", "M", "N", "P", "R"]; // 2020-2024
+            const yearCode = recentYearCodes[Math.floor(Math.random() * recentYearCodes.length)];
+            
+            // 工厂码(第11位)
+            const plantCode = validChars.charAt(Math.floor(Math.random() * validChars.length));
+            
+            // 序列号(后6位)
+            let serialNumber = "";
+            for (let i = 0; i < 6; i++) {
+                serialNumber += numericChars.charAt(Math.floor(Math.random() * numericChars.length));
+            }
+            
+            // 组合VIS部分
+            const vis = yearCode + plantCode + serialNumber;
+            
+            // 计算完整VIN
+            return generateVIN(wmi, vds, vis);
+        }
+
+        function generateVIN(wmi, vds, vis) {
+            // 字符转换值映射表
+            const charValues = {
+                'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8,
+                'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5, 'P': 7, 'R': 9, 'S': 2, 
+                'T': 3, 'U': 4, 'V': 5, 'W': 6, 'X': 7, 'Y': 8, 'Z': 9,
+                '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '0': 0
+            };
+            
+            // 权重表
+            const weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+            
+            // VIN码前8位和后8位
+            const vinWithoutCheckDigit = wmi + vds + vis;
+            
+            // 计算校验和
+            let sum = 0;
+            for (let i = 0; i < 8; i++) {
+                const char = vinWithoutCheckDigit.charAt(i).toUpperCase();
+                sum += charValues[char] * weights[i];
+            }
+            
+            for (let i = 0; i < 8; i++) {
+                const char = vinWithoutCheckDigit.charAt(i + 8).toUpperCase();
+                sum += charValues[char] * weights[i + 9];
+            }
+            
+            // 计算校验位
+            const remainder = sum % 11;
+            const checkDigit = remainder === 10 ? 'X' : String(remainder);
+            
+            // 组合完整的VIN码
+            const fullVIN = wmi + vds + checkDigit + vis;
+            
+            return fullVIN;
+        }
+
+        function validateVIN(vin) {
+            // 检查长度
+            if (vin.length !== 17) {
+                return false;
+            }
+            
+            // 检查是否包含非法字符 I, O, Q
+            if (/[IOQ]/i.test(vin)) {
+                return false;
+            }
+            
+            // 字符转换值映射表
+            const charValues = {
+                'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8,
+                'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5, 'P': 7, 'R': 9, 'S': 2, 
+                'T': 3, 'U': 4, 'V': 5, 'W': 6, 'X': 7, 'Y': 8, 'Z': 9,
+                '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '0': 0
+            };
+            
+            // 权重表
+            const weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+            
+            // 计算校验和
+            let sum = 0;
+            for (let i = 0; i < 17; i++) {
+                // 跳过校验位本身(第9位)
+                if (i !== 8) {
+                    const char = vin.charAt(i).toUpperCase();
+                    if (charValues[char] === undefined) {
+                        return false; // 包含无效字符
+                    }
+                    sum += charValues[char] * weights[i];
+                }
+            }
+            
+            // 计算校验位的预期值
+            const remainder = sum % 11;
+            const expectedCheckDigit = remainder === 10 ? 'X' : String(remainder);
+            
+            // 比较预期校验位和实际校验位
+            return expectedCheckDigit === vin.charAt(8).toUpperCase();
+        }
+
+        function getYearFromVIN(vin) {
+            const yearCode = vin.charAt(9);
+            const yearMap = {
+                'L': 2020,
+                'M': 2021,
+                'N': 2022,
+                'P': 2023,
+                'R': 2024
+            };
+            return yearMap[yearCode] || "未知年份";
+        }
+
+        // 生成随机发动机号
+        function generateRandomEngineNumber() {
+            const letters = "ABCDEFGHJKLMNPRSTUVWXYZ"; // 排除I, O, Q
+            const alphanumeric = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789"; // 排除I, O, Q
+            
+            // 以字母开头
+            let engineNumber = letters.charAt(Math.floor(Math.random() * letters.length));
+            
+            // 剩余9位随机字母数字
+            for (let i = 0; i < 9; i++) {
+                engineNumber += alphanumeric.charAt(Math.floor(Math.random() * alphanumeric.length));
+            }
+            
+            return engineNumber;
+        }
+
+        // 复制文本到剪贴板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // 成功复制
+            }).catch(err => {
+                console.error('复制失败: ', err);
+            });
+        }
+
+        // 生成结果并渲染到页面
+        function generateResults() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            for (let i = 0; i < 5; i++) {
+                const vin = generateRandomVIN();
+                const engineNumber = generateRandomEngineNumber();
+                const year = getYearFromVIN(vin);
+                
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                resultItem.innerHTML = `
+                    <div class="result-number">${i + 1}.</div>
+                    <div class="result-codes">
+                        <div class="code-group">
+                            <div class="code-label">VIN码 <span class="year-info">${year}年</span></div>
+                            <div class="code-value">${vin}</div>
+                            <button class="copy-btn" data-code="${vin}">复制</button>
+                        </div>
+                        <div class="code-group">
+                            <div class="code-label">发动机号</div>
+                            <div class="code-value">${engineNumber}</div>
+                            <button class="copy-btn" data-code="${engineNumber}">复制</button>
+                        </div>
+                    </div>
+                `;
+                
+                resultsDiv.appendChild(resultItem);
+            }
+            
+            // 绑定复制按钮事件
+            document.querySelectorAll('.copy-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const code = this.getAttribute('data-code');
+                    copyToClipboard(code);
+                    
+                    // 显示复制成功反馈
+                    const originalText = this.textContent;
+                    this.textContent = '已复制!';
+                    this.style.backgroundColor = '#27ae60';
+                    
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                        this.style.backgroundColor = '#2ecc71';
+                    }, 1500);
+                });
+            });
+        }
+
+        // 绑定生成按钮事件
+        document.getElementById('generateBtn').addEventListener('click', generateResults);
+        
+        // 页面加载时自动生成一次
+        window.addEventListener('load', generateResults);
+    </script>
+</body>
+</html>
