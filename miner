@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <title>矿机利润实时计算器（一键版）</title>
+    <style>
+        body{font-family:Arial,Helvetica,sans-serif;margin:20px;background:#f7f7f7}
+        h2{color:#333}
+        label{display:inline-block;width:170px;margin:4px 0}
+        input[type=number]{width:130px;padding:4px}
+        .btn{background:#007bff;color:#fff;border:none;padding:6px 12px;margin:4px;cursor:pointer;font-size:14px}
+        table{border-collapse:collapse;margin-top:10px;width:100%;background:#fff;font-size:13px}
+        th,td{border:1px solid #ccc;padding:4px 6px;text-align:center}
+        th{background:#eee}
+        .error{color:red;font-size:14px;margin-top:6px}
+        textarea{width:100%;height:110px;font-family:monospace;font-size:12px;margin-top:6px}
+    </style>
+</head>
+<body>
+<h2>矿机利润实时计算器（一键版）</h2>
+
+<!-- ========= 全局参数 ========= -->
+<div>
+    <label>电费 (元/kWh):</label>
+    <input type="number" step="0.01" id="electricity" value="0.43"/>
+</div>
+<div>
+    <label>每日单 T 产出 (BTC):</label>
+    <input type="number" step="0.00000001" id="perT" value="0.00000049"/>
+</div>
+<div>
+    <label>BTC 价格 (元):</label>
+    <input type="number" step="1" id="btcPrice" value="829446"/>
+</div>
+<button class="btn" onclick="fetchAll()">⟳ 刷新价格 & 产出</button>
+<hr/>
+
+<!-- ========= 按钮 ========= -->
+<div>
+    <button class="btn" onclick="importData()">导入 JSON</button>
+    <button class="btn" onclick="exportData()">导出 JSON</button>
+    <button class="btn" onclick="addRow()">+ 新增档位</button>
+    <button class="btn" onclick="calculate()">计算利润</button>
+</div>
+
+<!-- ========= 导入文本框 ========= -->
+<div id="importBox" style="display:none">
+    <h4>把 JSON 粘进来（覆盖现有档位）：</h4>
+    <textarea id="jsonInput" placeholder='[{"name":"档1","hash":100,"power":3000}]'></textarea>
+    <br/>
+    <button class="btn" onclick="applyImport()">确认导入</button>
+    <button class="btn" onclick="cancelImport()">取消</button>
+</div>
+
+<!-- ========= 档位输入 ========= -->
+<table id="settings">
+    <thead>
+    <tr>
+        <th>档位名称</th>
+        <th>算力 (TH/s)</th>
+        <th>功耗 (W)</th>
+        <th>操作</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<div id="error" class="error"></div>
+
+<!-- ========= 利润结果 ========= -->
+<table id="result" style="display:none">
+    <thead>
+    <tr>
+        <th>档位</th>
+        <th>算力 (TH/s)</th>
+        <th>功耗 (W)</th>
+        <th>功耗比 (W/TH)</th>
+        <th>每日挖币 (BTC)</th>
+        <th>挖币收益 (元)</th>
+        <th>电费成本 (元)</th>
+        <th>每日利润 (元)</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+    // ================= Cloudflare Worker 地址（可替换为自己的） =================
+    // 若跨域，请先用 Cloudflare Workers 部署合并接口，再替换这里
+    const WORKER_URL = 'https://btcinfo.refapi.workers.dev'; // ← 换成你自己的域名
+
+    // ================= 实时拉取价格 + 产出 =================
+    async function fetchAll(){
+        try{
+            const res = await fetch(WORKER_URL);
+            const { price, income } = await res.json();
+            if(price)  document.getElementById('btcPrice').value = price;
+            if(income) document.getElementById('perT').value   = income.toFixed(8);
+        }catch(e){
+            alert('获取实时数据失败，继续使用默认值');
+        }
+    }
+
+    // ================= 默认档位 =================
+    const defaultData=[
+        {name:"Factory-NEM",hash:122,power:2806},
+        {name:"Factory-HEM",hash:138,power:3450},
+        {name:"Overclock-Level1",hash:154,power:3696},
+        {name:"Overclock-Level2",hash:138,power:3174},
+        {name:"Overclock-Level3",hash:126,power:2772},
+        {name:"Overclock-Level4",hash:110,power:2310}
+    ];
+    function renderTable(data){
+        const tbody=document.querySelector('#settings tbody');
+        tbody.innerHTML='';
+        data.forEach((d,i)=>{
+            const tr=document.createElement('tr');
+            tr.innerHTML=`
+            <td><input class="name" type="text" value="${d.name}"/></td>
+            <td><input class="hash" type="number" step="0.1" value="${d.hash}"/></td>
+            <td><input class="power" type="number" step="1" value="${d.power}"/></td>
+            <td><button class="btn" onclick="delRow(${i})">删除</button></td>
+        `;
+            tbody.appendChild(tr);
+        });
+    }
+    renderTable(defaultData);
+
+    // ================= 增删行 =================
+    function addRow(){
+        const tbody=document.querySelector('#settings tbody');
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+        <td><input class="name" type="text" placeholder="档位名称"/></td>
+        <td><input class="hash" type="number" step="0.1" placeholder="算力"/></td>
+        <td><input class="power" type="number" step="1" placeholder="功耗(W)"/></td>
+        <td><button class="btn" onclick="this.parentNode.parentNode.remove()">删除</button></td>
+    `;
+        tbody.appendChild(tr);
+    }
+    function delRow(index){
+        const tbody=document.querySelector('#settings tbody');
+        tbody.children[index].remove();
+    }
+
+    // ================= 导入/导出 =================
+    function importData(){
+        document.getElementById('importBox').style.display='block';
+    }
+    function cancelImport(){
+        document.getElementById('importBox').style.display='none';
+    }
+    function applyImport(){
+        try{
+            const data=JSON.parse(document.getElementById('jsonInput').value);
+            if(!Array.isArray(data))throw 1;
+            renderTable(data);
+            cancelImport();
+        }catch(e){
+            alert('JSON 格式错误！示例:\n[{"name":"档1","hash":100,"power":3000}]');
+        }
+    }
+    function exportData(){
+        const rows=document.querySelectorAll('#settings tbody tr');
+        const arr=[...rows].map(r=>{
+            const name=r.querySelector('.name').value.trim()||'未命名';
+            const hash=parseFloat(r.querySelector('.hash').value)||0;
+            const power=parseFloat(r.querySelector('.power').value)||0;
+            return {name,hash,power};
+        });
+        const blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url;
+        a.download='miner_profiles.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ================= 计算利润 =================
+    function calculate(){
+        const e=parseFloat(document.getElementById('electricity').value);
+        const o=parseFloat(document.getElementById('perT').value);
+        const p=parseFloat(document.getElementById('btcPrice').value);
+        const err=document.getElementById('error');
+        err.textContent='';
+        if([e,o,p].some(v=>isNaN(v)||v<=0)){
+            err.textContent='请检查电费、单 T 产出、BTC 价格！';return;
+        }
+
+        const rows=document.querySelectorAll('#settings tbody tr');
+        const resultTbody=document.querySelector('#result tbody');
+        resultTbody.innerHTML='';
+        let anyEmpty=false;
+
+        rows.forEach(r=>{
+            const name=r.querySelector('.name').value.trim()||'未命名';
+            const H=parseFloat(r.querySelector('.hash').value);
+            const W=parseFloat(r.querySelector('.power').value);
+            if(!(H>0)||!(W>0)){anyEmpty=true;return;}
+
+            const jt=W/H;
+            const coinDaily=H*o;
+            const revenue=coinDaily*p;
+            const powerCost=W*24/1000*e;
+            const profit=revenue-powerCost;
+
+            const tr=document.createElement('tr');
+            tr.innerHTML=`
+            <td>${name}</td>
+            <td>${H.toFixed(2)}</td>
+            <td>${W.toFixed(0)}</td>
+            <td>${jt.toFixed(1)}</td>
+            <td>${coinDaily.toFixed(8)}</td>
+            <td>${revenue.toFixed(2)}</td>
+            <td>${powerCost.toFixed(2)}</td>
+            <td>${profit.toFixed(2)}</td>
+        `;
+            resultTbody.appendChild(tr);
+        });
+
+        if(anyEmpty) err.textContent='部分档位算力或功耗为空/零，已忽略。';
+        document.getElementById('result').style.display='table';
+    }
+
+    // =========== 页面加载即拉取实时数据 ===========
+    fetchAll();
+</script>
+</body>
+</html>
