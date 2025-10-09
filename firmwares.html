@@ -430,37 +430,37 @@
                     return;
                 }
 
-                // 只显示类型 3 的文件
-                const type3Files = this.currentMinerData.filter(file => String(file.fileType) === '3');
+                // 只显示类型 3 、0 的文件
+                const firmwareFiles = this.currentMinerData.filter(file => String(file.fileType) === '3'||String(file.fileType) === '0');
                 
-                if (type3Files.length === 0) {
-                    this.showError('该矿机没有类型 3 的固件文件');
+                if (firmwareFiles.length === 0) {
+                    this.showError('该矿机没有固件文件');
                     return;
                 }
 
                 // 显示统计信息
-                this.displayStats(type3Files);
+                this.displayStats(firmwareFiles);
 
                 // 显示文件列表
                 const container = document.getElementById('fileTypesContainer');
                 container.innerHTML = '';
                 
-                const section = this.createFileTypeSection('3', type3Files);
+                const section = this.createFileTypeSection('固件', firmwareFiles);
                 container.appendChild(section);
 
                 document.getElementById('fileContent').style.display = 'block';
                 document.getElementById('emptyState').style.display = 'none';
             }
 
-            displayStats(type3Files) {
+            displayStats(firmwareFiles) {
                 const container = document.getElementById('statsContainer');
-                const totalFiles = type3Files.length;
-                const totalSize = type3Files.reduce((sum, file) => sum + (file.fileSize || 0), 0);
+                const totalFiles = firmwareFiles.length;
+                const totalSize = firmwareFiles.reduce((sum, file) => sum + (file.fileSize || 0), 0);
 
                 container.innerHTML = `
                     <div class="stat-item">
                         <div class="stat-number">${totalFiles}</div>
-                        <div class="stat-label">类型 3 文件数</div>
+                        <div class="stat-label">固件类型文件数</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-number">${this.formatFileSize(totalSize)}</div>
