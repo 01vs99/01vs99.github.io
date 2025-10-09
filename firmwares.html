@@ -498,7 +498,7 @@
                 item.className = 'file-item';
 
                 const downloadUrl = this.buildDownloadUrl(file.cloudUrl);
-                const fileDate = this.formatFileDate(file.createTime);
+                const fileDate = this.formatFileDate(file.updateTime);
 
                 item.innerHTML = `
                     <div class="file-info">
