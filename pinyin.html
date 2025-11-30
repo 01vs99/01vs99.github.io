@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>快乐学拼音 - 终极修复版</title>
+    <title>简单学拼音</title>
     <link href="https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Nunito:wght@700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -13,6 +13,8 @@
             --text-color: #2d3436;
             --success-color: #42e695;
             --danger-color: #ff7675;
+            --line-outer: #a29bfe; /* 外线颜色 */
+            --line-inner: #ff7675; /* 内线颜色 */
             --seq-gradient: linear-gradient(90deg, #42e695 0%, #3bb2b8 100%);
             --random-gradient: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
         }
@@ -62,39 +64,87 @@
         .mode-btn.active[data-mode="sequential"] { color: #2ecc71; }
 
         .main-display {
-            min-height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 25px;
+            min-height: 220px; /* 增加高度以容纳四线三格 */
+            display: flex; align-items: center; justify-content: center; margin-bottom: 25px;
         }
 
+        /* ----- 核心修改：拼音卡片与四线三格 ----- */
         .pinyin-card {
-            width: min(280px, 65vw); aspect-ratio: 1 / 1.1;
-            background: #fff; border-radius: 40px;
-            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            width: min(280px, 65vw);
+            aspect-ratio: 1 / 1.1; /* 保持比例 */
+            background: #fff; border-radius: 30px;
+            display: flex; flex-direction: column; 
+            align-items: center; 
+            /* justify-content: center;  不再垂直居中，改为靠上布局 */
             cursor: pointer; position: relative; border: 4px solid #fff;
             box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1);
-            transition: all 0.2s; padding: 20px 10px; z-index: 5;
+            transition: all 0.2s; 
+            padding-top: 40px; /* 给顶部留空间 */
+            z-index: 5;
+            overflow: hidden; /* 防止内容溢出 */
         }
         .pinyin-card:active { transform: scale(0.98); }
         .pinyin-card.mastered { border-color: var(--gold-color); box-shadow: 0 0 25px rgba(255, 215, 0, 0.3); }
 
-        .pinyin-text {
-            font-size: clamp(80px, 22vw, 130px); font-weight: 800;
-            background: linear-gradient(180deg, #333 30%, #666 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            line-height: 1; flex: 1; display: flex; align-items: center; justify-content: center;
+        /* 四线三格容器 */
+        .grid-container {
+            position: relative;
+            width: 80%;
+            height: 120px; /* 总高度，分为3个40px的格 */
+            margin-bottom: 20px;
         }
 
+        /* 绘制线条 */
+        .grid-lines {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-sizing: border-box;
+            border-top: 2px solid var(--line-outer);    /* 第一线 */
+            border-bottom: 2px solid var(--line-outer); /* 第四线 */
+            /* 使用渐变绘制中间两条虚线/细线 */
+            background: linear-gradient(
+                to bottom,
+                transparent 39px, 
+                var(--line-inner) 40px, /* 第二线 */
+                transparent 41px, 
+                transparent 79px, 
+                var(--line-inner) 80px, /* 第三线 */
+                transparent 81px
+            );
+        }
+        
+        /* 拼音文字 - 精确对齐 */
+        .pinyin-text {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            font-family: 'Nunito', sans-serif; /* Nunito 字体比较圆润，适合拼音 */
+            font-size: 80px; /* 字体大小约为格子高度的2倍，覆盖上中下 */
+            font-weight: 700;
+            color: #333;
+            line-height: 120px; /* 行高 = 容器高度，让基线大致对齐第三线 */
+            text-align: center;
+            z-index: 2;
+            
+            /* 微调位置：Nunito字体的基线需要稍微往上提一点点才能完美压在第三线上 */
+            transform: translateY(-8px); 
+        }
+
+        /* 示例字容器 - 移到底部 */
         .examples-container {
             display: flex; width: 100%; justify-content: space-around;
-            padding-top: 10px; border-top: 2px dashed #f0f2f5;
+            padding-top: 15px; 
+            margin-top: auto; /* 推到底部 */
+            margin-bottom: 20px;
+            border-top: 2px dashed #f0f2f5;
         }
         .example-item { display: flex; flex-direction: column; align-items: center; color: #444; }
-        .example-char { font-size: clamp(20px, 5vw, 26px); font-weight: bold; line-height: 1.2; }
+        .example-char { font-size: clamp(20px, 5vw, 24px); font-weight: bold; line-height: 1.2; }
         .example-pinyin { font-size: 12px; color: #888; font-weight: 600; }
 
         .queue-badge {
-            position: absolute; top: 15px; left: 15px;
+            position: absolute; top: 12px; left: 12px;
             background: rgba(0,0,0,0.05); color: #888;
-            font-size: 12px; padding: 4px 10px; border-radius: 12px; font-weight: bold;
+            font-size: 11px; padding: 3px 8px; border-radius: 10px; font-weight: bold;
         }
 
         .control-panel { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; position: relative; z-index: 10; }
@@ -142,18 +192,10 @@
         .progress-fill.sequential { background: var(--seq-gradient); }
 
         .reset-btn-container { display: flex; justify-content: center; margin-top: 10px; }
-        
-        /* 彻底重构的重置按钮 */
         .reset-link { 
-            text-align: center; font-size: 13px; font-weight: bold;
-            color: #fff;
-            background: var(--danger-color);
-            border: none;
-            cursor: pointer; padding: 10px 25px; border-radius: 20px;
-            box-shadow: 0 4px 10px rgba(255, 118, 117, 0.3);
-            transition: all 0.2s;
-            position: relative; z-index: 100; /* 确保在最顶层 */
-            -webkit-appearance: none; /* 移除iOS默认样式 */
+            text-align: center; font-size: 13px; font-weight: bold; color: #fff;
+            background: var(--danger-color); border: none; cursor: pointer; padding: 10px 25px; border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(255, 118, 117, 0.3); transition: all 0.2s; position: relative; z-index: 100;
         }
         .reset-link:active { transform: scale(0.95); filter: brightness(0.9); }
         
@@ -166,7 +208,6 @@
         }
         .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
-        /* 确认模态框 */
         .confirm-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
@@ -213,7 +254,12 @@
         <div class="main-display">
             <div class="pinyin-card" id="pinyinCard">
                 <div class="queue-badge" id="queueBadge">剩 23 个</div>
-                <div class="pinyin-text" id="pinyinText">b</div>
+                
+                <!-- 四线三格结构 -->
+                <div class="grid-container">
+                    <div class="grid-lines"></div>
+                    <div class="pinyin-text" id="pinyinText">b</div>
+                </div>
                 
                 <div class="examples-container" id="examplesContainer"></div>
             </div>
@@ -248,13 +294,12 @@
                 已掌握 0 / 0 个
             </div>
             <div class="reset-btn-container">
-                <!-- 移除了 type=button 防止部分安卓浏览器异常，虽然标准推荐用 -->
                 <button class="reset-link" id="resetBtn">🗑️ 清空掌握记录</button>
             </div>
         </div>
     </div>
 
-    <!-- 自定义确认弹窗 -->
+    <!-- 确认模态框 -->
     <div class="confirm-modal" id="confirmModal">
         <div class="confirm-content">
             <div class="confirm-title" id="confirmTitle">确认操作</div>
@@ -343,7 +388,6 @@
                 this.toast = document.getElementById('toast');
                 this.modeBtns = document.querySelectorAll('.mode-btn');
                 
-                // Confirm Modal Elements
                 this.confirmModal = document.getElementById('confirmModal');
                 this.confirmTitle = document.getElementById('confirmTitle');
                 this.confirmDesc = document.getElementById('confirmDesc');
@@ -362,13 +406,11 @@
                     this.toggleMastery();
                 });
                 
-                // 重置按钮点击 - 打开模态框
                 this.resetBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     this.showConfirm();
                 });
 
-                // 模态框按钮
                 this.confirmCancel.addEventListener('click', () => this.hideConfirm());
                 this.confirmOk.addEventListener('click', () => {
                     this.performReset();
@@ -550,7 +592,6 @@
                 }
             }
 
-            // --- 确认弹窗逻辑 ---
             showConfirm() {
                 if (this.mode === 'sequential') {
                     this.confirmTitle.textContent = "重新学习";
@@ -570,10 +611,8 @@
 
             performReset() {
                 if (this.mode === 'sequential') {
-                    // 重置逻辑：将当前分类的存储进度置0
                     this.seqProgress[this.currentCategory] = 0;
                     this.saveSeqProgress();
-                    // 重新生成队列并展示
                     this.generateQueue(this.currentCategory);
                     this.nextPinyin();
                     this.showToast('📚 已重置进度，从头开始');
